@@ -1,0 +1,11 @@
+2024-11-15 13:43:39,041 WARNING  * Debugger is active!
+2024-11-15 13:43:39,041 INFO  * Debugger PIN: 920-579-425
+2024-11-15 13:43:54,496 INFO [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2024-11-15 13:43:54,497 INFO [33mPress CTRL+C to quit[0m
+2024-11-15 13:43:54,499 INFO  * Restarting with stat
+2024-11-15 13:43:55,740 WARNING  * Debugger is active!
+2024-11-15 13:43:55,743 INFO  * Debugger PIN: 920-579-425
+2024-11-15 13:43:59,549 INFO 127.0.0.1 - - [15/Nov/2024 13:43:59] "GET / HTTP/1.1" 200 -
+2024-11-15 13:47:00,087 INFO  * Detected change in 'C:\\Users\\User\\Downloads\\Development folder\\inventory_dashboard\\app.py', reloading
+2024-11-15 13:47:00,238 INFO  * Restarting with stat
