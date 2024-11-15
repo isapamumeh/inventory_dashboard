@@ -13,8 +13,22 @@ logging.basicConfig(level=logging.DEBUG,
 # Route to serve the CSV template
 @app.route('/download-template')
 def download_template():
-    return send_from_directory(directory='static/templates', filename='sample_inventory_template.csv', as_attachment=True)
+    try:
+        # Construct the absolute path to the 'static/templates' directory
+        templates_dir = os.path.join(app.root_path, 'static', 'templates')
+        filename = 'sample_inventory_template.csv'
 
+        # Check if the file exists
+        file_path = os.path.join(templates_dir, filename)
+        if not os.path.exists(file_path):
+            app.logger.error(f"File {filename} not found in {templates_dir}")
+            return jsonify({'error': 'Template file not found.'}), 404
+
+        # Send the file as an attachment
+        return send_from_directory(templates_dir, filename, as_attachment=True)
+    except Exception as e:
+        app.logger.error(f"Error in download_template: {e}")
+        return jsonify({'error': 'Internal Server Error.'}), 500
 @app.route('/')
 def index():
     # Render the upload.html template when accessing the root URL
