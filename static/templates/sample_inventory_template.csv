@@ -1,0 +1,4 @@
+Date,Vendor,Category,Product,SalesRate,Sales Revenue,Profit,Stock Level,Reorder Point 
+2023-01-01,Vendor A,Category X,Product 1,10,1000,200,50,20 
+2023-01-02,Vendor B,Category Y,Product 2,15,1500,300,30,15 
+2023-01-03,Vendor A,Category X,Product 3,5,500,100,0,10 
