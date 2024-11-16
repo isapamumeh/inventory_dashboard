@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Management Dashboard</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        /* Custom styles for the dashboard */
+        body {
+            background-color: #f8f9fa;
+        }
+        .card-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            flex: 1 1 30%;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            min-width: 180px;
+            text-align: center;
+        }
+        .summary-card.orange { background-color: #f39c12; }
+        .summary-card.red { background-color: #e74c3c; }
+        .summary-card.purple { background-color: #8e44ad; }
+        .summary-card.green { background-color: #2ecc71; }
+        .summary-card.blue { background-color: #3498db; }
+        .summary-card.teal { background-color: #1abc9c; }
+        .file-upload-section {
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: white;
+        }
+        .file-upload-section input[type="file"] {
+            display: none;
+        }
+        .progress {
+            height: 25px;
+        }
+        .chart-section {
+            margin-top: 40px;
+        }
+        .explanation {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Inventory Management Dashboard</h1>
+        
+        <!-- Instructions and Template Download -->
+        <div class="alert alert-info" role="alert">
+            <strong>Note:</strong> Please ensure your CSV file includes the following columns:
+            <ul>
+                <li>Date</li>
+                <li>Vendor</li>
+                <li>Category</li>
+                <li>Product</li>
+                <li>SalesRate</li>
+                <li>Sales Revenue</li>
+                <li>Profit</li>
+                <li>Stock Level</li>
+                <li>Reorder Point</li>
+            </ul>
+            <a href="/download-template" class="btn btn-info mt-2">Download CSV Template</a>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="card-summary">
+            <div class="summary-card orange">
+                <h2 id="totalVendors">0</h2>
+                <p>Total Vendors</p>
+            </div>
+            <div class="summary-card teal">
+                <h2 id="totalCategories">0</h2>
+                <p>Total Categories</p>
+            </div>
+            <div class="summary-card blue">
+                <h2 id="totalProducts">0</h2>
+                <p>Total Products</p>
+            </div>
+            <div class="summary-card green">
+                <h2 id="totalSalesRate">0</h2>
+                <p>Total Sales Rate</p>
+            </div>
+            <div class="summary-card red">
+                <h2 id="lowStockProducts">0</h2>
+                <p>Low Stock Products</p>
+            </div>
+            <div class="summary-card purple">
+                <h2 id="outOfStockProducts">0</h2>
+                <p>Out of Stock Products</p>
+            </div>
+            <div class="summary-card teal">
+                <h2 id="totalSalesRevenue">0</h2>
+                <p>Total Sales Revenue</p>
+            </div>
+            <div class="summary-card blue">
+                <h2 id="totalProfit">0</h2>
+                <p>Total Profit</p>
+            </div>
+        </div>
+        
+        <!-- File Upload Section -->
+        <div class="file-upload-section">
+            <h3>Upload Inventory File</h3>
+            <label for="fileInput" class="btn btn-primary">Choose File</label>
+            <input type="file" id="fileInput" accept=".csv">
+            <button onclick="uploadFile()" class="btn btn-success mt-2">Upload and Analyze</button>
+            <div class="progress mt-3" style="display: none;">
+                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
+            </div>
+        </div>
+        
+        <!-- Recent Uploads Table -->
+        <h3>Recent Uploads</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Upload Date</th>
+                    <th>Total Products</th>
+                    <th>Total Sales Revenue</th>
+                </tr>
+            </thead>
+            <tbody id="recentUploadsTable">
+                <!-- JavaScript will dynamically populate this section -->
+            </tbody>
+        </table>
+        
+        <!-- Charts Section -->
+        <div class="chart-section">
+            <!-- Sales Report Chart -->
+            <h3>Sales Report</h3>
+            <div id="salesReportChart" style="height: 400px;"></div>
+            
+            <!-- Sales Breakdown by Category -->
+            <h3>Sales Breakdown by Category</h3>
+            <div id="salesByCategoryChart" style="height: 400px;"></div>
+            
+            <!-- Stock Levels vs Reorder Points -->
+            <h3>Stock Levels vs Reorder Points</h3>
+            <div id="stockLevelsChart" style="height: 400px;"></div>
+            
+            <!-- Profit Analysis by Category -->
+            <h3>Profit Analysis by Category</h3>
+            <div id="profitByCategoryChart" style="height: 400px;"></div>
+        </div>
+        
+        <!-- Forecast Explanation -->
+        <div class="explanation" id="forecastExplanation">
+            <!-- JavaScript will dynamically populate this section -->
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
+<script>
+    function uploadFile() {
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = progressBar.parentElement;
+        const forecastExplanation = document.getElementById('forecastExplanation');
+
+        if (fileInput.files.length === 0) {
+            alert('Please upload a file.');
+            return;
+        }
+
+        const file = fileInput.files[0];
+
+        // Optional: Validate file size (e.g., max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5 MB
+        if (file.size > maxSize) {
+            alert('File size exceeds the 5MB limit.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Reset progress bar and show it
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressContainer.style.display = 'block';
+
+        // Disable the upload button to prevent multiple uploads
+        const uploadButton = document.querySelector('.btn-success');
+        uploadButton.disabled = true;
+
+        // Clear previous explanations
+        forecastExplanation.innerHTML = '';
+
+        // Create a new XMLHttpRequest for better progress handling
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+
+        // Update progress bar
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+            }
+        };
+
+        // Handle response
+        xhr.onload = function() {
+            uploadButton.disabled = false;
+            if (xhr.status === 200) {
+                const data = JSON.parse(xhr.responseText);
+                console.log('Response data:', data);
+
+                if (data.error) {
+                    // Create a Bootstrap alert
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger';
+                    alertDiv.role = 'alert';
+                    alertDiv.innerText = `Error: ${data.error}`;
+                    
+                    // Insert the alert at the top of the container
+                    const container = document.querySelector('.container');
+                    container.insertBefore(alertDiv, container.firstChild);
+                    
+                    // Optionally, remove the alert after a few seconds
+                    setTimeout(() => {
+                        alertDiv.remove();
+                    }, 5000);
+
+                    progressContainer.style.display = 'none';
+                    return;
+                }
+
+                // Update summary cards (assuming you have corresponding elements)
+                document.getElementById('totalVendors').textContent = data.totalVendors;
+                document.getElementById('totalCategories').textContent = data.totalCategories;
+                document.getElementById('totalProducts').textContent = data.totalProducts;
+                document.getElementById('lowStockProducts').textContent = data.lowStockProducts;
+                document.getElementById('outOfStockProducts').textContent = data.outOfStockProducts;
+                document.getElementById('totalSalesRate').textContent = data.totalSalesRate.toFixed(2);
+                document.getElementById('totalSalesRevenue').textContent = data.totalSalesRevenue.toFixed(2);
+                document.getElementById('totalProfit').textContent = data.totalProfit.toFixed(2);
+
+                // Plot Sales Report Chart
+                Plotly.newPlot('salesReportChart', data.salesReport, {
+                    responsive: true,
+                    title: 'Historical and Forecasted Sales',
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Sales Rate' },
+                    hovermode: 'closest'
+                });
+
+                // Plot Sales Breakdown by Category Chart
+                const salesByCategoryData = [{
+                    values: data.salesByCategory.values,
+                    labels: data.salesByCategory.labels,
+                    type: 'pie',
+                    textinfo: 'label+percent',
+                    insidetextorientation: 'radial'
+                }];
+                Plotly.newPlot('salesByCategoryChart', salesByCategoryData, {
+                    responsive: true,
+                    title: 'Sales Breakdown by Category',
+                    showlegend: true,
+                    hoverinfo: 'label+percent'
+                });
+
+                // Plot Stock Levels vs Reorder Points Chart
+                const stockLevelsData = [
+                    {
+                        x: data.stockLevels.products,
+                        y: data.stockLevels.stockLevels,
+                        type: 'bar',
+                        name: 'Stock Level',
+                        marker: {
+                            color: '#17BECF'
+                        }
+                    },
+                    {
+                        x: data.stockLevels.products,
+                        y: data.stockLevels.reorderPoints,
+                        type: 'bar',
+                        name: 'Reorder Point',
+                        marker: {
+                            color: '#7F7F7F'
+                        }
+                    }
+                ];
+                Plotly.newPlot('stockLevelsChart', stockLevelsData, {
+                    barmode: 'group',
+                    responsive: true,
+                    title: 'Stock Levels vs Reorder Points',
+                    xaxis: { title: 'Product' },
+                    yaxis: { title: 'Quantity' }
+                });
+
+                // Plot Profit Analysis by Category Chart
+                const profitByCategoryData = [{
+                    x: data.profitByCategory.labels,
+                    y: data.profitByCategory.values,
+                    type: 'bar',
+                    marker: {
+                        color: '#2ECC71'
+                    }
+                }];
+                Plotly.newPlot('profitByCategoryChart', profitByCategoryData, {
+                    responsive: true,
+                    title: 'Profit Analysis by Category',
+                    xaxis: { title: 'Category' },
+                    yaxis: { title: 'Profit' }
+                });
+
+                // Display Forecast Explanations
+                const forecast = data.forecastDetails;
+                forecastExplanation.innerHTML = `
+                    <h4>Forecast Insights:</h4>
+                    <ul>
+                        <li>Mean Forecasted Sales: ${forecast.meanForecast.toFixed(2)}</li>
+                        <li>Median Forecasted Sales: ${forecast.medianForecast.toFixed(2)}</li>
+                        <li>Maximum Forecasted Sales: ${forecast.maxForecast.toFixed(2)}</li>
+                        <li>Minimum Forecasted Sales: ${forecast.minForecast.toFixed(2)}</li>
+                    </ul>
+                    <p>The forecasted sales indicate an average daily sales rate of ${forecast.meanForecast.toFixed(2)} over the next 30 days. Monitoring these trends can help in strategic planning and inventory management.</p>
+                `;
+
+                // Hide progress bar after completion
+                progressContainer.style.display = 'none';
+            } else {
+                console.error('Server error:', xhr.statusText);
+                alert('An error occurred during file upload. Please check the console for details.');
+                progressContainer.style.display = 'none';
+            }
+        };
+
+        // Handle network errors
+        xhr.onerror = function() {
+            uploadButton.disabled = false;
+            console.error('Network error');
+            alert('A network error occurred. Please try again.');
+            progressContainer.style.display = 'none';
+        };
+
+        // Send the request
+        xhr.send(formData);
+    }
+
+    // Reset progress bar when selecting a new file
+    document.getElementById("fileInput").addEventListener("change", function() {
+        const progressBar = document.getElementById("progressBar");
+        const progressContainer = progressBar.parentElement;
+        progressBar.style.width = "0%";
+        progressBar.textContent = "0%";
+        progressContainer.style.display = 'none';
+    });
+    
+</script>
+<!-- Add this inside the <body> tag, preferably at the end -->
+
+<!-- Floating Chat Button -->
+<button id="chatButton" class="btn btn-primary rounded-circle" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    ">
+    💬
+</button>
+
+<!-- Chat Window -->
+<div id="chatWindow" style="
+        display: none;
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 300px;
+        max-height: 500px;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    ">
+    <!-- Chat Header -->
+    <div style="
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        ">
+        AI Assistant
+        <span id="closeChat" style="float: right; cursor: pointer;">&times;</span>
+    </div>
+    
+    <!-- Chat Body -->
+    <div id="chatBody" style="
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        ">
+        <!-- Messages will appear here -->
+    </div>
+    
+    <!-- Chat Input -->
+    <div style="
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        ">
+        <input type="text" id="chatInput" class="form-control" placeholder="Type your message..." />
+    </div>
+</div>
+
+<!-- Custom JavaScript for Chat Widget -->
+<script>
+    // Toggle Chat Window
+    const chatButton = document.getElementById('chatButton');
+    const chatWindow = document.getElementById('chatWindow');
+    const closeChat = document.getElementById('closeChat');
+    const chatBody = document.getElementById('chatBody');
+    const chatInput = document.getElementById('chatInput');
+
+    chatButton.onclick = () => {
+        chatWindow.style.display = chatWindow.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    closeChat.onclick = () => {
+        chatWindow.style.display = 'none';
+    };
+
+    // Handle Enter Key in Chat Input
+    chatInput.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Send Message Function
+    function sendMessage() {
+        const message = chatInput.value.trim();
+        if (message === "") return;
+
+        // Display user message
+        appendMessage('You', message);
+        chatInput.value = '';
+
+        // Send message to the backend
+        fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                appendMessage('AI Assistant', 'Sorry, I encountered an error.');
+            } else {
+                appendMessage('AI Assistant', data.reply);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            appendMessage('AI Assistant', 'Sorry, I couldn\'t process your request.');
+        });
+    }
+
+    // Append Message to Chat Body
+    function appendMessage(sender, text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+        chatBody.appendChild(messageDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
